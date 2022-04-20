@@ -3,7 +3,14 @@ use serde_bridge::Value;
 
 use crate::Collector;
 
+#[derive(Debug)]
 pub struct Environment;
+
+impl Environment {
+    pub fn create() -> Box<dyn Collector> {
+        Box::new(Self)
+    }
+}
 
 impl Collector for Environment {
     fn collect(&self) -> Result<Value> {
@@ -27,10 +34,8 @@ mod tests {
     fn test_env() {
         temp_env::with_vars(vec![("serfig_test_str", Some("test_str"))], || {
             let v = Environment.collect().expect("must success");
-            println!("{:?}", v);
 
             let t = TestStruct::from_value(v).expect("must success");
-            println!("{:?}", t);
 
             assert_eq!(
                 t,

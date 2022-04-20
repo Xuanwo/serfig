@@ -3,6 +3,7 @@ use anyhow::Result;
 use serde_bridge::Value;
 use std::fs;
 
+#[derive(Debug)]
 pub struct File<P: Parser> {
     path: String,
     parser: P,
@@ -12,11 +13,11 @@ impl<P> File<P>
 where
     P: Parser,
 {
-    pub fn new(path: &str, parser: P) -> Self {
-        Self {
+    pub fn create(path: &str, parser: P) -> Box<dyn Collector> {
+        Box::new(Self {
             path: path.to_string(),
             parser,
-        }
+        })
     }
 }
 

@@ -2,6 +2,7 @@ use crate::Parser;
 use anyhow::Result;
 use serde::de::DeserializeOwned;
 
+#[derive(Debug)]
 pub struct Toml;
 
 impl Parser for Toml {
