@@ -3,7 +3,7 @@ use serde_bridge::Value;
 
 use crate::Collector;
 
-struct Environment;
+pub struct Environment;
 
 impl Collector for Environment {
     fn collect(&self) -> Result<Value> {

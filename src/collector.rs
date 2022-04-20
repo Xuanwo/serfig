@@ -1,6 +1,6 @@
 use anyhow::Result;
 use serde_bridge::Value;
 
-pub trait Collector {
+pub trait Collector: 'static {
     fn collect(&self) -> Result<Value>;
 }

@@ -1,6 +1,7 @@
+mod builder;
+pub use builder::Builder;
 mod collector;
-mod config;
+pub use collector::Collector;
+
 mod impls;
 mod value;
-
-pub use collector::Collector;
