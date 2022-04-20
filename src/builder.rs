@@ -2,8 +2,8 @@ use anyhow::{anyhow, Result};
 use serde::de::DeserializeOwned;
 use serde_bridge::{FromValue, Value};
 
+use crate::collectors::Collector;
 use crate::value::merge;
-use crate::Collector;
 
 #[derive(Default)]
 pub struct Builder {
@@ -50,7 +50,7 @@ impl Builder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::impls::Environment;
+    use crate::collectors::Environment;
     use serde::Deserialize;
 
     #[derive(Debug, Deserialize, PartialEq)]
