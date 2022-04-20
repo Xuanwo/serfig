@@ -15,7 +15,7 @@ impl Builder {
         Self::default()
     }
 
-    pub fn with_collector(mut self, c: impl Collector) -> Self {
+    pub fn collect(mut self, c: impl Collector) -> Self {
         self.collectors.push(Box::new(c));
         Self {
             collectors: self.collectors,
@@ -64,7 +64,7 @@ mod tests {
         temp_env::with_vars(
             vec![("test_a", Some("test_a")), ("test_b", Some("test_b"))],
             || {
-                let cfg = Builder::default().with_collector(Environment);
+                let cfg = Builder::default().collect(Environment);
                 let t: TestConfig = cfg.build().expect("must success");
 
                 assert_eq!(
