@@ -3,6 +3,7 @@ authors = ["Xuanwo <github@xuanwo.io>"]
 categories = ["command-line-utilities"]
 description = "Layered configuration system built upon serde"
 documentation = "https://docs.rs/serfig"
+repository = "https://github.com/Xuanwo/serfig"
 edition = "2021"
 license = "Apache-2.0"
 name = "serfig"
@@ -10,9 +11,9 @@ version = "0.0.0"
 
 [dependencies]
 serde = "1.0.136"
-serde-bridge = { path = "../serde-bridge" }
+serde-bridge = { git = "https://github.com/Xuanwo/serde-bridge", rev = "4879af8" }
+serde-env = { git = "https://github.com/Xuanwo/serde-env", rev ="ead9be2" }
 anyhow = "1.0.56"
-envy = "0.4.1"
 indexmap = "1.8.1"
 toml = "0.5.9"
 log = "0.4.16"

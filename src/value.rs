@@ -6,7 +6,13 @@ fn merge_map<K: Hash + Eq>(mut l: IndexMap<K, Value>, r: IndexMap<K, Value>) -> 
     for (k, rv) in r {
         match l.remove(&k) {
             Some(lv) => {
-                l.insert(k, merge(lv, rv));
+                let v = match (is_default(&lv), is_default(&rv)) {
+                    (false, false) => merge(lv, rv),
+                    (false, true) => lv,
+                    (true, _) => rv,
+                };
+
+                l.insert(k, v);
             }
             None => {
                 l.insert(k, rv);
@@ -43,6 +49,42 @@ pub fn merge(l: Value, r: Value) -> Value {
         },
         // Return `other` value if they are not merge-able
         (_, r) => r,
+    }
+}
+
+pub fn is_default(value: &Value) -> bool {
+    match value {
+        Value::Bool(v) => !(*v),
+        Value::I8(v) => *v == 0,
+        Value::I16(v) => *v == 0,
+        Value::I32(v) => *v == 0,
+        Value::I64(v) => *v == 0,
+        Value::I128(v) => *v == 0,
+        Value::U8(v) => *v == 0,
+        Value::U16(v) => *v == 0,
+        Value::U32(v) => *v == 0,
+        Value::U64(v) => *v == 0,
+        Value::U128(v) => *v == 0,
+        Value::F32(v) => *v == 0.0,
+        Value::F64(v) => *v == 0.0,
+        Value::Char(v) => *v == '\0',
+        Value::Str(v) => v.is_empty(),
+        Value::Bytes(v) => v.is_empty(),
+        Value::None => true,
+        Value::Some(v) => is_default(v),
+        Value::Unit => true,
+        Value::UnitStruct(_) => true,
+        // We don't know which variant is default, always returns false instead.
+        Value::UnitVariant { .. } => false,
+        Value::NewtypeStruct(_, v) => is_default(v),
+        Value::NewtypeVariant { value, .. } => is_default(value),
+        Value::Seq(v) => v.is_empty(),
+        Value::Tuple(v) => v.is_empty(),
+        Value::TupleStruct(_, v) => v.is_empty(),
+        Value::TupleVariant { fields, .. } => fields.is_empty(),
+        Value::Map(v) => v.is_empty(),
+        Value::Struct(_, v) => v.is_empty(),
+        Value::StructVariant { fields, .. } => fields.is_empty(),
     }
 }
 

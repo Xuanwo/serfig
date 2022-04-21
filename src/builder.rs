@@ -1,29 +1,35 @@
 use anyhow::{anyhow, Result};
-use log::warn;
+use log::{debug, warn};
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use serde_bridge::{FromValue, Value};
 
 use crate::collectors::Collector;
 use crate::value::merge;
 
 #[derive(Default)]
-pub struct Builder {
-    collectors: Vec<Box<dyn Collector>>,
+pub struct Builder<V: DeserializeOwned + Serialize> {
+    collectors: Vec<Box<dyn Collector<V>>>,
 }
 
-impl Builder {
-    pub fn new() -> Builder {
-        Self::default()
+impl<V> Builder<V>
+where
+    V: DeserializeOwned + Serialize,
+{
+    pub fn new() -> Builder<V> {
+        Self {
+            collectors: Vec::new(),
+        }
     }
 
-    pub fn collect(mut self, c: Box<dyn Collector>) -> Self {
+    pub fn collect(mut self, c: Box<dyn Collector<V>>) -> Self {
         self.collectors.push(c);
         Self {
             collectors: self.collectors,
         }
     }
 
-    pub fn build<T: DeserializeOwned>(self) -> Result<T> {
+    pub fn build(self) -> Result<V> {
         let mut result = None;
         let mut value = Value::Unit;
         for c in self.collectors {
@@ -35,8 +41,9 @@ impl Builder {
                     continue;
                 }
             };
+            debug!("we got value: {:?}", value);
             // Re-deserialize the value if we from_value correctly.
-            result = match T::from_value(value.clone()) {
+            result = match V::from_value(value.clone()) {
                 Ok(v) => Some(v),
                 Err(e) => {
                     warn!("deserialize value {:?}: {:?}", value, e);
@@ -55,8 +62,10 @@ mod tests {
     use crate::collectors::{Environment, IntoCollector};
     use crate::parsers::Toml;
     use serde::Deserialize;
+    use serde::Serialize;
 
-    #[derive(Debug, Deserialize, PartialEq, Default)]
+    #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
+    #[serde(default)]
     struct TestConfig {
         test_a: String,
         test_b: String,

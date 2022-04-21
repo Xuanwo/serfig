@@ -1,7 +1,9 @@
 use crate::Collector;
 use crate::Parser;
 use anyhow::Result;
-use serde_bridge::Value;
+use serde::de::DeserializeOwned;
+use serde::{Serialize};
+use serde_bridge::{IntoValue, Value};
 use std::fmt::Debug;
 
 #[derive(Debug)]
@@ -10,15 +12,18 @@ pub struct IntoCollect<T: Sized + Debug + AsRef<[u8]>, P: Parser> {
     parser: P,
 }
 
-pub trait IntoCollector<P: Parser>: Sized + Debug + AsRef<[u8]> {
-    fn into_collector(self, parser: P) -> Box<dyn Collector>;
+pub trait IntoCollector<V: DeserializeOwned + Serialize, P: Parser>:
+    Sized + Debug + AsRef<[u8]>
+{
+    fn into_collector(self, parser: P) -> Box<dyn Collector<V>>;
 }
 
-impl<P> IntoCollector<P> for String
+impl<V, P> IntoCollector<V, P> for String
 where
+    V: DeserializeOwned + Serialize,
     P: Parser,
 {
-    fn into_collector(self, parser: P) -> Box<dyn Collector> {
+    fn into_collector(self, parser: P) -> Box<dyn Collector<V>> {
         Box::new(IntoCollect {
             value: self,
             parser,
@@ -26,11 +31,12 @@ where
     }
 }
 
-impl<P> IntoCollector<P> for &'static str
+impl<V, P> IntoCollector<V, P> for &'static str
 where
+    V: DeserializeOwned + Serialize,
     P: Parser,
 {
-    fn into_collector(self, parser: P) -> Box<dyn Collector> {
+    fn into_collector(self, parser: P) -> Box<dyn Collector<V>> {
         Box::new(IntoCollect {
             value: self,
             parser,
@@ -38,13 +44,15 @@ where
     }
 }
 
-impl<T, P> Collector for IntoCollect<T, P>
+impl<V, T, P> Collector<V> for IntoCollect<T, P>
 where
+    V: DeserializeOwned + Serialize,
     T: Sized + Debug + AsRef<[u8]>,
     P: Parser,
 {
     fn collect(&self) -> Result<Value> {
         let bs = self.value.as_ref();
-        self.parser.parse(bs)
+        let v: V = self.parser.parse(bs)?;
+        Ok(v.into_value()?)
     }
 }
