@@ -12,7 +12,7 @@ version = "0.0.0"
 [dependencies]
 serde = "1.0.136"
 serde-bridge = { git = "https://github.com/Xuanwo/serde-bridge", rev = "4879af8" }
-serde-env = { git = "https://github.com/Xuanwo/serde-env", rev ="ead9be2" }
+serde-env = { git = "https://github.com/Xuanwo/serde-env", rev ="4394117" }
 anyhow = "1.0.56"
 indexmap = "1.8.1"
 toml = "0.5.9"
