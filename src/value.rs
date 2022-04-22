@@ -100,7 +100,7 @@ fn merge_map_defaultable<K: Hash + Eq>(
         match l.remove(&k) {
             Some(lv) => {
                 let v = match (&lv == dv, &rv == dv) {
-                    (false, false) => merge(lv, rv),
+                    (false, false) => merge_defaultable(dv.clone(), lv, rv),
                     (false, true) => lv,
                     (true, _) => rv,
                 };
