@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use log::{debug, warn};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use serde_bridge::{into_value, FromValue, Value};
+use serde_bridge::{into_value, FromValue};
 
 use crate::collectors::Collector;
 use crate::value::{merge, merge_with_default};
@@ -32,7 +32,7 @@ where
     pub fn build_with(self, value: V) -> Result<V> {
         let mut result = None;
         let default = into_value(value)?;
-        let mut value = Value::Unit;
+        let mut value = default.clone();
         for c in self.collectors {
             let collected_value = match c.collect() {
                 // Merge will default to make sure every value here is from
@@ -165,6 +165,32 @@ mod tests {
                     test_c: "Default".to_string(),
                 }
             )
+        });
+
+        Ok(())
+    }
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[serde(default)]
+    struct TestConfigBool {
+        test_bool: bool,
+    }
+
+    impl Default for TestConfigBool {
+        fn default() -> Self {
+            Self { test_bool: true }
+        }
+    }
+
+    #[test]
+    fn test_config_bool_enabled() -> Result<()> {
+        let _ = env_logger::try_init();
+
+        temp_env::with_vars(vec![("test_bool", Some("false"))], || {
+            let cfg = Builder::default().collect(Environment::create());
+            let t: TestConfigBool = cfg.build().expect("must success");
+
+            assert_eq!(t, TestConfigBool { test_bool: false })
         });
 
         Ok(())
