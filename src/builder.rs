@@ -2,10 +2,10 @@ use anyhow::{anyhow, Result};
 use log::{debug, warn};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use serde_bridge::{FromValue, Value};
+use serde_bridge::{into_value, FromValue, Value};
 
 use crate::collectors::Collector;
-use crate::value::merge;
+use crate::value::{merge, merge_defaultable};
 
 #[derive(Default)]
 pub struct Builder<V: DeserializeOwned + Serialize> {
@@ -36,6 +36,40 @@ where
             // Merge value if we collect successfully.
             value = match c.collect() {
                 Ok(v) => merge(value, v),
+                Err(e) => {
+                    warn!("collect from {:?}: {:?}", c, e);
+                    continue;
+                }
+            };
+            debug!("we got value: {:?}", value);
+            // Re-deserialize the value if we from_value correctly.
+            result = match V::from_value(value.clone()) {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    warn!("deserialize value {:?}: {:?}", value, e);
+                    continue;
+                }
+            }
+        }
+
+        result.ok_or_else(|| anyhow!("no valid value to deserialize",))
+    }
+}
+
+impl<V> Builder<V>
+where
+    V: DeserializeOwned + Serialize + Default,
+{
+    pub fn build_defaultable(self) -> Result<V> {
+        let mut result = None;
+        let mut value = Value::Unit;
+
+        let default =
+            into_value(V::default()).expect("default value must be able to convert into value");
+        for c in self.collectors {
+            // Merge value if we collect successfully.
+            value = match c.collect() {
+                Ok(v) => merge_defaultable(default.clone(), value, v),
                 Err(e) => {
                     warn!("collect from {:?}: {:?}", c, e);
                     continue;
@@ -105,6 +139,44 @@ mod tests {
             assert_eq!(
                 t,
                 TestConfig {
+                    test_a: "test_a".to_string(),
+                    test_b: "test_b".to_string(),
+                }
+            )
+        });
+
+        Ok(())
+    }
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[serde(default)]
+    struct TestConfigDefault {
+        test_a: String,
+        test_b: String,
+    }
+
+    impl Default for TestConfigDefault {
+        fn default() -> Self {
+            Self {
+                test_a: String::new(),
+                test_b: "Hello, World!".to_string(),
+            }
+        }
+    }
+
+    #[test]
+    fn test_layered_build_default() -> Result<()> {
+        let _ = env_logger::try_init();
+
+        temp_env::with_vars(vec![("test_a", Some("test_a"))], || {
+            let cfg = Builder::default()
+                .collect(Environment::create())
+                .collect(r#"test_b = "test_b""#.into_collector(Toml));
+            let t: TestConfigDefault = cfg.build().expect("must success");
+
+            assert_eq!(
+                t,
+                TestConfigDefault {
                     test_a: "test_a".to_string(),
                     test_b: "test_b".to_string(),
                 }

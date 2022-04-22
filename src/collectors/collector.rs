@@ -1,6 +1,6 @@
 use anyhow::Result;
 use serde::de::DeserializeOwned;
-use serde::{Serialize};
+use serde::Serialize;
 use serde_bridge::{FromValue, IntoValue, Value};
 use std::fmt::Debug;
 

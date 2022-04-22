@@ -2,7 +2,7 @@ use crate::Collector;
 use crate::Parser;
 use anyhow::Result;
 use serde::de::DeserializeOwned;
-use serde::{Serialize};
+use serde::Serialize;
 use serde_bridge::{IntoValue, Value};
 use std::fmt::Debug;
 
