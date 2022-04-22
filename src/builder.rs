@@ -2,10 +2,10 @@ use anyhow::{anyhow, Result};
 use log::{debug, warn};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use serde_bridge::{into_value, FromValue, Value};
+use serde_bridge::{into_value, FromValue};
 
 use crate::collectors::Collector;
-use crate::value::{merge, merge_defaultable};
+use crate::value::merge;
 
 #[derive(Default)]
 pub struct Builder<V: DeserializeOwned + Serialize> {
@@ -29,9 +29,9 @@ where
         }
     }
 
-    pub fn build(self) -> Result<V> {
+    pub fn build_with(self, value: V) -> Result<V> {
         let mut result = None;
-        let mut value = Value::Unit;
+        let mut value = into_value(value)?;
         for c in self.collectors {
             // Merge value if we collect successfully.
             value = match c.collect() {
@@ -60,33 +60,8 @@ impl<V> Builder<V>
 where
     V: DeserializeOwned + Serialize + Default,
 {
-    pub fn build_defaultable(self) -> Result<V> {
-        let mut result = None;
-        let mut value = Value::Unit;
-
-        let default =
-            into_value(V::default()).expect("default value must be able to convert into value");
-        for c in self.collectors {
-            // Merge value if we collect successfully.
-            value = match c.collect() {
-                Ok(v) => merge_defaultable(default.clone(), value, v),
-                Err(e) => {
-                    warn!("collect from {:?}: {:?}", c, e);
-                    continue;
-                }
-            };
-            debug!("we got value: {:?}", value);
-            // Re-deserialize the value if we from_value correctly.
-            result = match V::from_value(value.clone()) {
-                Ok(v) => Some(v),
-                Err(e) => {
-                    warn!("deserialize value {:?}: {:?}", value, e);
-                    continue;
-                }
-            }
-        }
-
-        result.ok_or_else(|| anyhow!("no valid value to deserialize",))
+    pub fn build(self) -> Result<V> {
+        self.build_with(V::default())
     }
 }
 
@@ -153,6 +128,7 @@ mod tests {
     struct TestConfigDefault {
         test_a: String,
         test_b: String,
+        test_c: String,
     }
 
     impl Default for TestConfigDefault {
@@ -160,6 +136,7 @@ mod tests {
             Self {
                 test_a: String::new(),
                 test_b: "Hello, World!".to_string(),
+                test_c: "Default".to_string(),
             }
         }
     }
@@ -179,6 +156,7 @@ mod tests {
                 TestConfigDefault {
                     test_a: "test_a".to_string(),
                     test_b: "test_b".to_string(),
+                    test_c: "Default".to_string(),
                 }
             )
         });

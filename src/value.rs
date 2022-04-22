@@ -88,73 +88,6 @@ pub fn is_default(value: &Value) -> bool {
     }
 }
 
-fn merge_map_defaultable<K: Hash + Eq>(
-    default: IndexMap<K, Value>,
-    mut l: IndexMap<K, Value>,
-    r: IndexMap<K, Value>,
-) -> IndexMap<K, Value> {
-    for (k, rv) in r {
-        // Take unit as default if key not found.
-        let dv = default.get(&k).unwrap_or(&Value::Unit);
-
-        match l.remove(&k) {
-            Some(lv) => {
-                let v = match (&lv == dv, &rv == dv) {
-                    (false, false) => merge_defaultable(dv.clone(), lv, rv),
-                    (false, true) => lv,
-                    (true, _) => rv,
-                };
-
-                l.insert(k, v);
-            }
-            None => {
-                l.insert(k, rv);
-            }
-        };
-    }
-    l
-}
-
-pub fn merge_defaultable(default: Value, l: Value, r: Value) -> Value {
-    use Value::*;
-
-    match (default, l, r) {
-        (Map(d), Map(l), Map(r)) => Value::Map(merge_map_defaultable(d, l, r)),
-        (Struct(dn, dv), Struct(ln, lv), Struct(rn, rv)) if ln == rn && ln == dn => {
-            Value::Struct(ln, merge_map_defaultable(dv, lv, rv))
-        }
-        (
-            StructVariant {
-                name: dn,
-                variant_index: dvi,
-                variant: dv,
-                fields: df,
-            },
-            StructVariant {
-                name: ln,
-                variant_index: lvi,
-                variant: lv,
-                fields: lf,
-            },
-            StructVariant {
-                name: rn,
-                variant_index: rvi,
-                variant: rv,
-                fields: rf,
-            },
-        ) if ln == rn && lvi == rvi && lv == rv && ln == dn && lvi == dvi && lv == dv => {
-            Value::StructVariant {
-                name: ln,
-                variant_index: lvi,
-                variant: lv,
-                fields: merge_map_defaultable(df, lf, rf),
-            }
-        }
-        // Return `other` value if they are not merge-able
-        (_, _, r) => r,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -188,41 +121,5 @@ mod tests {
             })
         });
         assert_eq!(merge(l, r), expect)
-    }
-
-    #[test]
-    fn test_merge_defaultable() {
-        let default = Map(indexmap! {
-            Str("default_value".to_string()) => I64(1),
-            Str("struct".to_string()) => Struct("test", indexmap! {
-                "only_in_l" => U64(100),
-                "common" => F64(9.7),
-            })
-        });
-
-        let l = Map(indexmap! {
-            Str("only_in_l".to_string()) => I64(1),
-            Str("struct".to_string()) => Struct("test", indexmap! {
-                "only_in_l" => U64(2),
-                "common" => F64(3.4),
-            })
-        });
-        let r = Map(indexmap! {
-            Str("only_in_r".to_string()) => I64(2),
-            Str("struct".to_string()) => Struct("test", indexmap! {
-                "only_in_r" => U64(1),
-                "common" => F64(5.6),
-            })
-        });
-        let expect = Map(indexmap! {
-            Str("only_in_l".to_string()) => I64(1),
-            Str("only_in_r".to_string()) => I64(2),
-            Str("struct".to_string()) => Struct("test", indexmap! {
-                "only_in_l" => U64(2),
-                "only_in_r" => U64(1),
-                "common" => F64(5.6),
-            })
-        });
-        assert_eq!(merge_defaultable(default, l, r), expect)
     }
 }
