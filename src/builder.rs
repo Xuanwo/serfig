@@ -2,10 +2,10 @@ use anyhow::{anyhow, Result};
 use log::{debug, warn};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use serde_bridge::{into_value, FromValue};
+use serde_bridge::{into_value, FromValue, Value};
 
 use crate::collectors::Collector;
-use crate::value::merge;
+use crate::value::{merge, merge_with_default};
 
 #[derive(Default)]
 pub struct Builder<V: DeserializeOwned + Serialize> {
@@ -31,17 +31,23 @@ where
 
     pub fn build_with(self, value: V) -> Result<V> {
         let mut result = None;
-        let mut value = into_value(value)?;
+        let default = into_value(value)?;
+        let mut value = Value::Unit;
         for c in self.collectors {
-            // Merge value if we collect successfully.
-            value = match c.collect() {
-                Ok(v) => merge(value, v),
+            let collected_value = match c.collect() {
+                // Merge will default to make sure every value here is from
+                // user input.
+                Ok(v) => merge_with_default(default.clone(), v),
                 Err(e) => {
                     warn!("collect from {:?}: {:?}", c, e);
                     continue;
                 }
             };
-            debug!("we got value: {:?}", value);
+            // Three way merge here to make sure we take the last non-default
+            // value.
+            value = merge(default.clone(), value, collected_value);
+
+            debug!("got value: {:?}", value);
             // Re-deserialize the value if we from_value correctly.
             result = match V::from_value(value.clone()) {
                 Ok(v) => Some(v),

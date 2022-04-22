@@ -2,32 +2,31 @@ use indexmap::IndexMap;
 use serde_bridge::Value;
 use std::hash::Hash;
 
-fn merge_map<K: Hash + Eq>(mut l: IndexMap<K, Value>, r: IndexMap<K, Value>) -> IndexMap<K, Value> {
+fn merge_map_with_default<K: Hash + Eq>(
+    mut d: IndexMap<K, Value>,
+    r: IndexMap<K, Value>,
+) -> IndexMap<K, Value> {
     for (k, rv) in r {
-        match l.remove(&k) {
+        match d.remove(&k) {
             Some(lv) => {
-                let v = match (is_default(&lv), is_default(&rv)) {
-                    (false, false) => merge(lv, rv),
-                    (false, true) => lv,
-                    (true, _) => rv,
-                };
-
-                l.insert(k, v);
+                d.insert(k, merge_with_default(lv, rv));
             }
             None => {
-                l.insert(k, rv);
+                d.insert(k, rv);
             }
         };
     }
-    l
+    d
 }
 
-pub fn merge(l: Value, r: Value) -> Value {
+pub fn merge_with_default(d: Value, r: Value) -> Value {
     use Value::*;
 
-    match (l, r) {
-        (Map(l), Map(r)) => Value::Map(merge_map(l, r)),
-        (Struct(ln, lv), Struct(rn, rv)) if ln == rn => Value::Struct(ln, merge_map(lv, rv)),
+    match (d, r) {
+        (Map(l), Map(r)) => Value::Map(merge_map_with_default(l, r)),
+        (Struct(ln, lv), Struct(rn, rv)) if ln == rn => {
+            Value::Struct(ln, merge_map_with_default(lv, rv))
+        }
         (
             StructVariant {
                 name: ln,
@@ -45,46 +44,76 @@ pub fn merge(l: Value, r: Value) -> Value {
             name: ln,
             variant_index: lvi,
             variant: lv,
-            fields: merge_map(lf, rf),
+            fields: merge_map_with_default(lf, rf),
         },
         // Return `other` value if they are not merge-able
         (_, r) => r,
     }
 }
 
-pub fn is_default(value: &Value) -> bool {
-    match value {
-        Value::Bool(v) => !(*v),
-        Value::I8(v) => *v == 0,
-        Value::I16(v) => *v == 0,
-        Value::I32(v) => *v == 0,
-        Value::I64(v) => *v == 0,
-        Value::I128(v) => *v == 0,
-        Value::U8(v) => *v == 0,
-        Value::U16(v) => *v == 0,
-        Value::U32(v) => *v == 0,
-        Value::U64(v) => *v == 0,
-        Value::U128(v) => *v == 0,
-        Value::F32(v) => *v == 0.0,
-        Value::F64(v) => *v == 0.0,
-        Value::Char(v) => *v == '\0',
-        Value::Str(v) => v.is_empty(),
-        Value::Bytes(v) => v.is_empty(),
-        Value::None => true,
-        Value::Some(v) => is_default(v),
-        Value::Unit => true,
-        Value::UnitStruct(_) => true,
-        // We don't know which variant is default, always returns false instead.
-        Value::UnitVariant { .. } => false,
-        Value::NewtypeStruct(_, v) => is_default(v),
-        Value::NewtypeVariant { value, .. } => is_default(value),
-        Value::Seq(v) => v.is_empty(),
-        Value::Tuple(v) => v.is_empty(),
-        Value::TupleStruct(_, v) => v.is_empty(),
-        Value::TupleVariant { fields, .. } => fields.is_empty(),
-        Value::Map(v) => v.is_empty(),
-        Value::Struct(_, v) => v.is_empty(),
-        Value::StructVariant { fields, .. } => fields.is_empty(),
+fn merge_map<K: Hash + Eq>(
+    mut d: IndexMap<K, Value>,
+    mut l: IndexMap<K, Value>,
+    r: IndexMap<K, Value>,
+) -> IndexMap<K, Value> {
+    for (k, rv) in r {
+        let dv = d.remove(&k).expect("default must contain key");
+
+        match l.remove(&k) {
+            Some(lv) => {
+                let v = match (dv == lv, dv == rv) {
+                    (true, false) => rv,
+                    (true, true) => dv,
+                    (false, true) => lv,
+                    (false, false) => merge(dv, lv, rv),
+                };
+                l.insert(k, v);
+            }
+            None => {
+                l.insert(k, rv);
+            }
+        };
+    }
+    l
+}
+
+pub fn merge(d: Value, l: Value, r: Value) -> Value {
+    use Value::*;
+
+    match (d, l, r) {
+        (Map(d), Map(l), Map(r)) => Value::Map(merge_map(d, l, r)),
+        (Struct(dn, dv), Struct(ln, lv), Struct(rn, rv)) if dn == ln && ln == rn => {
+            Value::Struct(ln, merge_map(dv, lv, rv))
+        }
+        (
+            StructVariant {
+                name: dn,
+                variant_index: dvi,
+                variant: dv,
+                fields: df,
+            },
+            StructVariant {
+                name: ln,
+                variant_index: lvi,
+                variant: lv,
+                fields: lf,
+            },
+            StructVariant {
+                name: rn,
+                variant_index: rvi,
+                variant: rv,
+                fields: rf,
+            },
+        ) if ln == rn && lvi == rvi && lv == rv && ln == dn && lvi == dvi && lv == dv => {
+            Value::StructVariant {
+                name: ln,
+                variant_index: lvi,
+                variant: lv,
+                fields: merge_map(df, lf, rf),
+            }
+        }
+        // Return `other` value if they are not merge-able
+        (_, _, r) => r,
     }
 }
 
@@ -97,11 +126,22 @@ mod tests {
 
     #[test]
     fn test_merge() {
+        let d = Map(indexmap! {
+            Str("only_in_l".to_string()) => I64(0),
+            Str("only_in_r".to_string()) => I64(0),
+            Str("struct".to_string()) => Struct("test", indexmap! {
+                "only_in_l" => U64(0),
+                "only_in_r" => U64(0),
+                "common" => F64(0.0),
+                "default_true" => Bool(true),
+            })
+        });
         let l = Map(indexmap! {
             Str("only_in_l".to_string()) => I64(1),
             Str("struct".to_string()) => Struct("test", indexmap! {
                 "only_in_l" => U64(2),
                 "common" => F64(3.4),
+                "default_true" => Bool(true),
             })
         });
         let r = Map(indexmap! {
@@ -109,6 +149,7 @@ mod tests {
             Str("struct".to_string()) => Struct("test", indexmap! {
                 "only_in_r" => U64(1),
                 "common" => F64(5.6),
+                "default_true" => Bool(false),
             })
         });
         let expect = Map(indexmap! {
@@ -118,8 +159,10 @@ mod tests {
                 "only_in_l" => U64(2),
                 "only_in_r" => U64(1),
                 "common" => F64(5.6),
+                "default_true" => Bool(false),
             })
         });
-        assert_eq!(merge(l, r), expect)
+
+        assert_eq!(merge(d, l, r), expect)
     }
 }
