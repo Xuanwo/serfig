@@ -7,6 +7,7 @@ use serde_bridge::{into_value, FromValue};
 use crate::collectors::{Collector, IntoCollector};
 use crate::value::{merge, merge_with_default};
 
+/// Builder will collect values from different collectors and merge into the final value.
 #[derive(Default)]
 pub struct Builder<V: DeserializeOwned + Serialize> {
     collectors: Vec<Box<dyn Collector<V>>>,
@@ -16,12 +17,42 @@ impl<V> Builder<V>
 where
     V: DeserializeOwned + Serialize,
 {
+    /// Create new builders.
     pub fn new() -> Builder<V> {
         Self {
             collectors: Vec::new(),
         }
     }
 
+    /// Add collectors into builder.
+    ///
+    /// This is a lazy operation that no real IO happens.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use serde::{Deserialize, Serialize};
+    /// use serfig::collectors::{from_env, from_file, from_self};
+    /// use serfig::parsers::Toml;
+    /// use serfig::Builder;
+    ///
+    /// #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
+    /// #[serde(default)]
+    /// struct TestConfig {
+    ///     a: String,
+    ///     b: String,
+    ///     c: i64,
+    /// }
+    ///
+    /// fn main() -> anyhow::Result<()> {
+    ///     let builder = Builder::default()
+    ///         .collect(from_env())
+    ///         .collect(from_file(Toml, "config.toml"))
+    ///         .collect(from_self(TestConfig::default()));
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn collect(mut self, c: impl IntoCollector<V>) -> Self {
         self.collectors.push(c.into_collector());
         Self {
@@ -29,9 +60,41 @@ where
         }
     }
 
-    pub fn build_with(self, value: V) -> Result<V> {
+    /// Use input `default` as the default value to build.
+    ///
+    /// # Behavior
+    ///
+    /// Builder will ignore any errors happened during build, and only returns
+    /// errors if no valid value collected.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use serde::{Deserialize, Serialize};
+    /// use serfig::collectors::{from_env, from_file, from_self};
+    /// use serfig::parsers::Toml;
+    /// use serfig::Builder;
+    ///
+    /// #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
+    /// #[serde(default)]
+    /// struct TestConfig {
+    ///     a: String,
+    ///     b: String,
+    ///     c: i64,
+    /// }
+    ///
+    /// fn main() -> anyhow::Result<()> {
+    ///     let builder = Builder::default()
+    ///         .collect(from_env())
+    ///         .collect(from_file(Toml, "config.toml"));
+    ///
+    ///     let t = builder.build_with(TestConfig::default())?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn build_with(self, default: V) -> Result<V> {
         let mut result = None;
-        let default = into_value(value)?;
+        let default = into_value(default)?;
         let mut value = default.clone();
         for mut c in self.collectors {
             let collected_value = match c.collect() {
@@ -66,6 +129,33 @@ impl<V> Builder<V>
 where
     V: DeserializeOwned + Serialize + Default,
 {
+    /// If input value implements `Default`, we can use `build` instead.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use serde::{Deserialize, Serialize};
+    /// use serfig::collectors::{from_env, from_file, from_self};
+    /// use serfig::parsers::Toml;
+    /// use serfig::Builder;
+    ///
+    /// #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
+    /// #[serde(default)]
+    /// struct TestConfig {
+    ///     a: String,
+    ///     b: String,
+    ///     c: i64,
+    /// }
+    ///
+    /// fn main() -> anyhow::Result<()> {
+    ///     let builder = Builder::default()
+    ///         .collect(from_env())
+    ///         .collect(from_file(Toml, "config.toml"));
+    ///
+    ///     let t = builder.build()?;
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn build(self) -> Result<V> {
         self.build_with(V::default())
     }

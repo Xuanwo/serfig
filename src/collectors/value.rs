@@ -8,6 +8,35 @@ use serde_bridge::{IntoValue, Value};
 use crate::collectors::collector::IntoCollector;
 use crate::Collector;
 
+/// load config from `Self`.
+///
+/// # Examples
+///
+/// ```no_run
+/// use serde::Deserialize;
+/// use serde::Serialize;
+/// use serfig::Builder;
+/// use serfig::collectors::from_self;
+///
+/// #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
+/// #[serde(default)]
+/// struct TestConfig {
+///     a: String,
+///     b: String,
+///     c: i64,
+/// }
+///
+/// fn main() -> anyhow::Result<()> {
+/// # let r = "Hello, World!".as_bytes();
+///     let builder = Builder::default()
+///         .collect(from_self(TestConfig::default()));
+///
+///     let t: TestConfig = builder.build()?;
+///
+///     println!("{:?}", t);
+///     Ok(())
+/// }
+/// ```
 pub fn from_self<V>(v: V) -> FromSelf<V>
 where
     V: DeserializeOwned + Serialize + Debug,
@@ -15,6 +44,7 @@ where
     FromSelf(Some(v))
 }
 
+/// Collectors that can load configs from self.
 pub struct FromSelf<V: DeserializeOwned + Serialize + Debug>(Option<V>);
 
 impl<V> Collector<V> for FromSelf<V>
@@ -22,11 +52,7 @@ where
     V: DeserializeOwned + Serialize + Debug,
 {
     fn collect(&mut self) -> Result<Value> {
-        Ok(self
-            .0
-            .take()
-            .expect("must contains valid value")
-            .into_value()?)
+        Ok(self.0.take().expect("contains valid value").into_value()?)
     }
 }
 

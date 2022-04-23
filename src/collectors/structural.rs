@@ -11,33 +11,119 @@ use serde_bridge::{IntoValue, Value};
 use crate::collectors::collector::IntoCollector;
 use crate::{Collector, Parser};
 
-pub fn from_reader<V, R, P>(parser: P, r: R) -> Result<Structural<V, R, P>>
+/// load config from reader with specific format.
+///
+/// # Examples
+///
+/// ```no_run
+/// use serde::Deserialize;
+/// use serde::Serialize;
+/// use serfig::Builder;
+/// use serfig::collectors::from_reader;
+/// use serfig::parsers::Toml;
+///
+/// #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
+/// #[serde(default)]
+/// struct TestConfig {
+///     a: String,
+///     b: String,
+///     c: i64,
+/// }
+///
+/// fn main() -> anyhow::Result<()> {
+/// # let r = "Hello, World!".as_bytes();
+///     let builder = Builder::default()
+///         .collect(from_reader(Toml, r));
+///
+///     let t: TestConfig = builder.build()?;
+///
+///     println!("{:?}", t);
+///     Ok(())
+/// }
+/// ```
+pub fn from_reader<V, R, P>(parser: P, r: R) -> Structural<V, R, P>
 where
     V: DeserializeOwned + Serialize + Debug,
     R: io::Read,
     P: Parser,
 {
-    Ok(Structural {
+    Structural {
         phantom: PhantomData::default(),
         reader: r,
         parser,
-    })
+    }
 }
 
-pub fn from_file<V, P>(parser: P, path: &str) -> Result<Structural<V, File, P>>
+/// load config from file path with specific format.
+///
+/// # Examples
+///
+/// ```no_run
+/// use serde::Deserialize;
+/// use serde::Serialize;
+/// use serfig::Builder;
+/// use serfig::collectors::from_file;
+/// use serfig::parsers::Toml;
+///
+/// #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
+/// #[serde(default)]
+/// struct TestConfig {
+///     a: String,
+///     b: String,
+///     c: i64,
+/// }
+///
+/// fn main() -> anyhow::Result<()> {
+///     let builder = Builder::default()
+///         .collect(from_file(Toml, "config.toml"));
+///
+///     let t: TestConfig = builder.build()?;
+///
+///     println!("{:?}", t);
+///     Ok(())
+/// }
+/// ```
+pub fn from_file<V, P>(parser: P, path: &str) -> Structural<V, LazyFileReader, P>
 where
     V: DeserializeOwned + Serialize + Debug,
     P: Parser,
 {
-    let f = fs::File::open(path)?;
-
-    Ok(Structural {
+    Structural {
         phantom: PhantomData::default(),
-        reader: f,
+        reader: LazyFileReader::new(path),
         parser,
-    })
+    }
 }
 
+/// load config from string with specific format.
+///
+/// # Examples
+///
+/// ```
+/// use serde::Deserialize;
+/// use serde::Serialize;
+/// use serfig::Builder;
+/// use serfig::collectors::from_str;
+/// use serfig::parsers::Toml;
+///
+/// #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
+/// #[serde(default)]
+/// struct TestConfig {
+///     a: String,
+///     b: String,
+///     c: i64,
+/// }
+///
+/// fn main() -> anyhow::Result<()> {
+///     let builder = Builder::default()
+///         .collect(from_str(Toml, r#"a = "Hello, World!""#));
+///
+///     let t: TestConfig = builder.build()?;
+///
+///     println!("{:?}", t);
+///     Ok(())
+/// }
+/// ```
 pub fn from_str<V, P>(parser: P, s: &str) -> Structural<V, &[u8], P>
 where
     V: DeserializeOwned + Serialize + Debug,
@@ -50,6 +136,7 @@ where
     }
 }
 
+/// Collector that load from a reader and than parsed by specified format.
 pub struct Structural<V: DeserializeOwned + Serialize + Debug, R: io::Read, P: Parser> {
     phantom: PhantomData<V>,
     reader: R,
@@ -79,6 +166,33 @@ where
 {
     fn into_collector(self) -> Box<dyn Collector<V>> {
         Box::new(self)
+    }
+}
+
+pub struct LazyFileReader {
+    path: String,
+    r: Option<File>,
+}
+
+impl LazyFileReader {
+    fn new(path: &str) -> LazyFileReader {
+        LazyFileReader {
+            path: path.to_string(),
+            r: None,
+        }
+    }
+}
+
+impl io::Read for LazyFileReader {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        match &mut self.r {
+            None => {
+                let f = fs::File::open(&self.path)?;
+                self.r = Some(f);
+                self.read(buf)
+            }
+            Some(f) => f.read(buf),
+        }
     }
 }
 

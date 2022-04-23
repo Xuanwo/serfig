@@ -3,6 +3,7 @@ use serde::de::DeserializeOwned;
 
 use crate::Parser;
 
+/// Toml format support
 #[derive(Debug)]
 pub struct Toml;
 

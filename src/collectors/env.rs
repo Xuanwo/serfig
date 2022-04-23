@@ -10,6 +10,33 @@ use serde_bridge::{IntoValue, Value};
 use crate::collectors::collector::IntoCollector;
 use crate::Collector;
 
+/// load config from env.
+///
+/// # Examples
+///
+/// ```
+/// use serde::Deserialize;
+/// use serde::Serialize;
+/// use serfig::Builder;
+/// use serfig::collectors::from_env;
+///
+/// #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
+/// #[serde(default)]
+/// struct TestConfig {
+///     a: String,
+///     b: String,
+///     c: i64,
+/// }
+///
+/// fn main() -> anyhow::Result<()> {
+///     let builder = Builder::default()
+///         .collect(from_env());
+///     let t: TestConfig = builder.build()?;
+///
+///     println!("{:?}", t);
+///     Ok(())
+/// }
+/// ```
 pub fn from_env<V>() -> Environment<V>
 where
     V: DeserializeOwned + Serialize + Debug,
@@ -19,6 +46,9 @@ where
     }
 }
 
+/// Collector that can load config from env.
+///
+/// Created by [`from_env`].
 #[derive(Debug)]
 pub struct Environment<V: DeserializeOwned + Serialize + Debug> {
     phantom: PhantomData<V>,
