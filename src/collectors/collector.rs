@@ -1,20 +1,13 @@
 use anyhow::Result;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use serde_bridge::{FromValue, IntoValue, Value};
-use std::fmt::Debug;
+use serde_bridge::{Value};
 
-pub trait Collector<V: DeserializeOwned + Serialize>: Debug {
-    fn collect(&self) -> Result<Value>;
+
+pub trait Collector<V: DeserializeOwned + Serialize> {
+    fn collect(&mut self) -> Result<Value>;
 }
 
-impl<V> Collector<V> for Value
-where
-    V: DeserializeOwned + Serialize,
-{
-    fn collect(&self) -> Result<Value> {
-        let t = V::from_value(self.clone())?;
-
-        Ok(t.into_value()?)
-    }
+pub trait IntoCollector<V: DeserializeOwned + Serialize> {
+    fn into_collector(self) -> Box<dyn Collector<V>>;
 }

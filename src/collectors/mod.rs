@@ -1,11 +1,14 @@
 mod collector;
 pub use collector::Collector;
+pub use collector::IntoCollector;
 
 mod env;
-pub use env::Environment;
+pub use env::from_env;
 
-mod file;
-pub use file::File;
+mod structural;
+pub use structural::from_file;
+pub use structural::from_reader;
+pub use structural::from_str;
 
-mod convert;
-pub use convert::IntoCollector;
+mod value;
+pub use value::from_self;

@@ -4,7 +4,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_bridge::{into_value, FromValue};
 
-use crate::collectors::Collector;
+use crate::collectors::{Collector, IntoCollector};
 use crate::value::{merge, merge_with_default};
 
 #[derive(Default)]
@@ -22,8 +22,8 @@ where
         }
     }
 
-    pub fn collect(mut self, c: Box<dyn Collector<V>>) -> Self {
-        self.collectors.push(c);
+    pub fn collect(mut self, c: impl IntoCollector<V>) -> Self {
+        self.collectors.push(c.into_collector());
         Self {
             collectors: self.collectors,
         }
@@ -33,13 +33,13 @@ where
         let mut result = None;
         let default = into_value(value)?;
         let mut value = default.clone();
-        for c in self.collectors {
+        for mut c in self.collectors {
             let collected_value = match c.collect() {
                 // Merge will default to make sure every value here is from
                 // user input.
                 Ok(v) => merge_with_default(default.clone(), v),
                 Err(e) => {
-                    warn!("collect from {:?}: {:?}", c, e);
+                    warn!("collect: {:?}", e);
                     continue;
                 }
             };
@@ -74,7 +74,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::collectors::{Environment, IntoCollector};
+    use crate::collectors::*;
     use crate::parsers::Toml;
     use serde::Deserialize;
     use serde::Serialize;
@@ -91,7 +91,7 @@ mod tests {
         temp_env::with_vars(
             vec![("test_a", Some("test_a")), ("test_b", Some("test_b"))],
             || {
-                let cfg = Builder::default().collect(Environment::create());
+                let cfg = Builder::default().collect(from_env());
                 let t: TestConfig = cfg.build().expect("must success");
 
                 assert_eq!(
@@ -113,8 +113,8 @@ mod tests {
 
         temp_env::with_vars(vec![("test_a", Some("test_a"))], || {
             let cfg = Builder::default()
-                .collect(Environment::create())
-                .collect(r#"test_b = "test_b""#.into_collector(Toml));
+                .collect(from_env())
+                .collect(from_str(Toml, r#"test_b = "test_b""#));
             let t: TestConfig = cfg.build().expect("must success");
 
             assert_eq!(
@@ -153,8 +153,8 @@ mod tests {
 
         temp_env::with_vars(vec![("test_a", Some("test_a"))], || {
             let cfg = Builder::default()
-                .collect(Environment::create())
-                .collect(r#"test_b = "test_b""#.into_collector(Toml));
+                .collect(from_env())
+                .collect(from_str(Toml, r#"test_b = "test_b""#));
             let t: TestConfigDefault = cfg.build().expect("must success");
 
             assert_eq!(
@@ -187,7 +187,7 @@ mod tests {
         let _ = env_logger::try_init();
 
         temp_env::with_vars(vec![("test_bool", Some("false"))], || {
-            let cfg = Builder::default().collect(Environment::create());
+            let cfg = Builder::default().collect(from_env());
             let t: TestConfigBool = cfg.build().expect("must success");
 
             assert_eq!(t, TestConfigBool { test_bool: false })

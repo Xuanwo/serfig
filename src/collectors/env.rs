@@ -6,32 +6,40 @@ use serde_bridge::{IntoValue, Value};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
+use crate::collectors::collector::IntoCollector;
 use crate::Collector;
 
-#[derive(Debug)]
-pub struct Environment<V: DeserializeOwned + Serialize + Debug + 'static> {
-    phantom: PhantomData<V>,
+pub fn from_env<V>() -> Environment<V>
+where
+    V: DeserializeOwned + Serialize + Debug,
+{
+    Environment {
+        phantom: PhantomData::default(),
+    }
 }
 
-impl<V> Environment<V>
-where
-    V: DeserializeOwned + Serialize + Debug + 'static,
-{
-    pub fn create() -> Box<dyn Collector<V>> {
-        Box::new(Self {
-            phantom: PhantomData::default(),
-        })
-    }
+#[derive(Debug)]
+pub struct Environment<V: DeserializeOwned + Serialize + Debug> {
+    phantom: PhantomData<V>,
 }
 
 impl<V> Collector<V> for Environment<V>
 where
     V: DeserializeOwned + Serialize + Debug,
 {
-    fn collect(&self) -> Result<Value> {
+    fn collect(&mut self) -> Result<Value> {
         let v: V = serde_env::from_env()?;
         debug!("value parsed from env: {:?}", v);
         Ok(v.into_value()?)
+    }
+}
+
+impl<V> IntoCollector<V> for Environment<V>
+where
+    V: DeserializeOwned + Serialize + Debug + 'static,
+{
+    fn into_collector(self) -> Box<dyn Collector<V>> {
+        Box::new(self)
     }
 }
 
@@ -54,9 +62,9 @@ mod tests {
         let _ = env_logger::try_init();
 
         temp_env::with_vars(vec![("serfig_test_str", Some("test_str"))], || {
-            let v = Environment::<TestStruct>::create()
-                .collect()
-                .expect("must success");
+            let mut c: Environment<TestStruct> = from_env();
+
+            let v = c.collect().expect("must success");
 
             debug!("value: {:?}", v);
             let t = TestStruct::from_value(v).expect("must success");
