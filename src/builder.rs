@@ -135,6 +135,7 @@ mod tests {
         test_a: String,
         test_b: String,
         test_c: String,
+        test_d: String,
     }
 
     impl Default for TestConfigDefault {
@@ -143,6 +144,7 @@ mod tests {
                 test_a: String::new(),
                 test_b: "Hello, World!".to_string(),
                 test_c: "Default".to_string(),
+                test_d: "".to_string(),
             }
         }
     }
@@ -154,7 +156,11 @@ mod tests {
         temp_env::with_vars(vec![("test_a", Some("test_a"))], || {
             let cfg = Builder::default()
                 .collect(from_env())
-                .collect(from_str(Toml, r#"test_b = "test_b""#));
+                .collect(from_str(Toml, r#"test_b = "test_b""#))
+                .collect(from_self(TestConfigDefault {
+                    test_d: "override".to_string(),
+                    ..Default::default()
+                }));
             let t: TestConfigDefault = cfg.build().expect("must success");
 
             assert_eq!(
@@ -163,6 +169,7 @@ mod tests {
                     test_a: "test_a".to_string(),
                     test_b: "test_b".to_string(),
                     test_c: "Default".to_string(),
+                    test_d: "override".to_string(),
                 }
             )
         });
