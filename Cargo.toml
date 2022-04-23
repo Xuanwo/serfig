@@ -7,7 +7,7 @@ repository = "https://github.com/Xuanwo/serfig"
 edition = "2021"
 license = "Apache-2.0"
 name = "serfig"
-version = "0.0.0"
+version = "0.0.1"
 
 [dependencies]
 serde = "1.0.136"
