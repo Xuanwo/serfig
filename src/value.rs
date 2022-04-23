@@ -1,6 +1,7 @@
+use std::hash::Hash;
+
 use indexmap::IndexMap;
 use serde_bridge::Value;
-use std::hash::Hash;
 
 fn merge_map_with_default<K: Hash + Eq>(
     mut d: IndexMap<K, Value>,
@@ -119,10 +120,11 @@ pub fn merge(d: Value, l: Value, r: Value) -> Value {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use indexmap::indexmap;
     use serde_bridge::Value;
     use Value::*;
+
+    use super::*;
 
     #[test]
     fn test_merge() {

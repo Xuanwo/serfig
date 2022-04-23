@@ -1,13 +1,15 @@
-use crate::collectors::collector::IntoCollector;
-use crate::{Collector, Parser};
+use std::fmt::Debug;
+use std::fs::File;
+use std::marker::PhantomData;
+use std::{fs, io};
+
 use anyhow::Result;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_bridge::{IntoValue, Value};
-use std::fmt::{Debug};
-use std::fs::File;
-use std::marker::PhantomData;
-use std::{fs, io};
+
+use crate::collectors::collector::IntoCollector;
+use crate::{Collector, Parser};
 
 pub fn from_reader<V, R, P>(parser: P, r: R) -> Result<Structural<V, R, P>>
 where
@@ -82,12 +84,12 @@ where
 
 #[cfg(test)]
 mod tests {
+    use log::debug;
+    use serde::{Deserialize, Serialize};
+    use serde_bridge::FromValue;
+
     use super::*;
     use crate::parsers::Toml;
-    use log::debug;
-    use serde::Deserialize;
-    use serde::Serialize;
-    use serde_bridge::FromValue;
 
     #[derive(Debug, Serialize, Deserialize, PartialEq)]
     struct TestStruct {

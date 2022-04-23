@@ -73,11 +73,11 @@ where
 
 #[cfg(test)]
 mod tests {
+    use serde::{Deserialize, Serialize};
+
     use super::*;
     use crate::collectors::*;
     use crate::parsers::Toml;
-    use serde::Deserialize;
-    use serde::Serialize;
 
     #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
     #[serde(default)]

@@ -1,10 +1,9 @@
-use anyhow::Result;
+use std::fmt::Debug;
 
+use anyhow::Result;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_bridge::{IntoValue, Value};
-use std::fmt::Debug;
-
 
 use crate::collectors::collector::IntoCollector;
 use crate::Collector;
@@ -42,11 +41,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use log::debug;
-    use serde::Deserialize;
-    use serde::Serialize;
+    use serde::{Deserialize, Serialize};
     use serde_bridge::FromValue;
+
+    use super::*;
 
     #[derive(Debug, Serialize, Deserialize, PartialEq)]
     struct TestStruct {

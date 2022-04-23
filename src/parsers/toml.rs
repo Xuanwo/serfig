@@ -1,6 +1,7 @@
-use crate::Parser;
 use anyhow::Result;
 use serde::de::DeserializeOwned;
+
+use crate::Parser;
 
 #[derive(Debug)]
 pub struct Toml;
