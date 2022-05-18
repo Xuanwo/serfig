@@ -219,6 +219,49 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn test_layered_overwrite() -> Result<()> {
+        let _ = env_logger::try_init();
+
+        temp_env::with_vars(
+            vec![("test_a", Some("test_a")), ("test_b", Some("test_b"))],
+            || {
+                let cfg = Builder::default()
+                    .collect(from_env())
+                    .collect(from_str(Toml, r#"test_b = "test_b_overwrite""#));
+                let t: TestConfig = cfg.build().expect("must success");
+
+                assert_eq!(
+                    t,
+                    TestConfig {
+                        test_a: "test_a".to_string(),
+                        test_b: "test_b_overwrite".to_string(),
+                    }
+                )
+            },
+        );
+
+        temp_env::with_vars(
+            vec![("test_a", Some("test_a")), ("test_b", Some("test_b"))],
+            || {
+                let cfg = Builder::default()
+                    .collect(from_str(Toml, r#"test_b = "test_b_overwrite""#))
+                    .collect(from_env());
+                let t: TestConfig = cfg.build().expect("must success");
+
+                assert_eq!(
+                    t,
+                    TestConfig {
+                        test_a: "test_a".to_string(),
+                        test_b: "test_b".to_string(),
+                    }
+                )
+            },
+        );
+
+        Ok(())
+    }
+
     #[derive(Debug, Serialize, Deserialize, PartialEq)]
     #[serde(default)]
     struct TestConfigDefault {
@@ -243,23 +286,58 @@ mod tests {
     fn test_layered_build_default() -> Result<()> {
         let _ = env_logger::try_init();
 
-        temp_env::with_vars(vec![("test_a", Some("test_a"))], || {
+        temp_env::with_vars(
+            vec![
+                ("test_a", Some("test_a")),
+                ("test_b", Some("test_b_from_env")),
+            ],
+            || {
+                let cfg = Builder::default()
+                    .collect(from_env())
+                    .collect(from_str(Toml, r#"test_b = "test_b""#))
+                    .collect(from_str(Toml, r#"test_b = "Hello, World!""#))
+                    .collect(from_self(TestConfigDefault {
+                        test_d: "override".to_string(),
+                        ..Default::default()
+                    }));
+                let t: TestConfigDefault = cfg.build().expect("must success");
+
+                assert_eq!(
+                    t,
+                    TestConfigDefault {
+                        test_a: "test_a".to_string(),
+                        test_b: "test_b".to_string(),
+                        test_c: "Default".to_string(),
+                        test_d: "override".to_string(),
+                    }
+                )
+            },
+        );
+
+        Ok(())
+    }
+
+    #[derive(Debug, Serialize, Default, Deserialize, PartialEq)]
+    #[serde(default)]
+    struct TestConfigVec {
+        test_a: Vec<String>,
+    }
+
+    #[test]
+    fn test_layered_build_vec() -> Result<()> {
+        let _ = env_logger::try_init();
+
+        temp_env::with_vars(vec![("test_a", Some(""))], || {
             let cfg = Builder::default()
                 .collect(from_env())
-                .collect(from_str(Toml, r#"test_b = "test_b""#))
-                .collect(from_self(TestConfigDefault {
-                    test_d: "override".to_string(),
-                    ..Default::default()
-                }));
-            let t: TestConfigDefault = cfg.build().expect("must success");
+                .collect(from_str(Toml, r#"test_a = ["test_b"]"#))
+                .collect(from_self(TestConfigVec::default()));
+            let t: TestConfigVec = cfg.build().expect("must success");
 
             assert_eq!(
                 t,
-                TestConfigDefault {
-                    test_a: "test_a".to_string(),
-                    test_b: "test_b".to_string(),
-                    test_c: "Default".to_string(),
-                    test_d: "override".to_string(),
+                TestConfigVec {
+                    test_a: vec!["test_b".to_string()],
                 }
             )
         });
