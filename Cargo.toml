@@ -12,7 +12,7 @@ version = "0.0.2"
 [dependencies]
 serde = "1.0.136"
 serde-bridge = "0.0.3"
-serde-env = "0.0.3"
+serde-env = "0.1.0"
 anyhow = "1.0.56"
 indexmap = "1.8.1"
 toml = "0.5.9"
