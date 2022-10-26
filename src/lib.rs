@@ -21,7 +21,6 @@
 //! fn main() -> anyhow::Result<()> {
 //!     let builder = Builder::default()
 //!         .collect(from_env())
-//!         .collect(from_file(Toml, "config.toml"))
 //!         .collect(from_self(TestConfig::default()));
 //!     let t: TestConfig = builder.build()?;
 //!
