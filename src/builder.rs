@@ -85,8 +85,7 @@ where
     ///
     /// fn main() -> anyhow::Result<()> {
     ///     let builder = Builder::default()
-    ///         .collect(from_env())
-    ///         .collect(from_file(Toml, "config.toml"));
+    ///         .collect(from_env());
     ///
     ///     let t = builder.build_with(TestConfig::default())?;
     ///     Ok(())
@@ -97,15 +96,10 @@ where
         let default = into_value(default)?;
         let mut value = default.clone();
         for mut c in self.collectors {
-            let collected_value = match c.collect() {
-                // Merge will default to make sure every value here is from
-                // user input.
-                Ok(v) => merge_with_default(default.clone(), v),
-                Err(e) => {
-                    warn!("collect: {:?}", e);
-                    continue;
-                }
-            };
+            // Merge will default to make sure every value here is from
+            // user input.
+            let collected_value = merge_with_default(default.clone(), c.collect()?);
+
             // Three way merge here to make sure we take the last non-default
             // value.
             value = merge(default.clone(), value, collected_value);

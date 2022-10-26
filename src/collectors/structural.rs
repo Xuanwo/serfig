@@ -151,7 +151,7 @@ where
 {
     fn collect(&mut self) -> Result<Value> {
         let mut bs = Vec::new();
-        let _ = self.reader.read_to_end(&mut bs)?;
+        self.reader.read_to_end(&mut bs)?;
 
         let v: V = self.parser.parse(&bs)?;
         Ok(v.into_value()?)
