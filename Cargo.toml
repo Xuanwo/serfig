@@ -7,18 +7,18 @@ repository = "https://github.com/Xuanwo/serfig"
 edition = "2021"
 license = "Apache-2.0"
 name = "serfig"
-version = "0.0.2"
+version = "0.0.3"
 
 [dependencies]
-serde = "1.0.136"
+serde = "1"
 serde-bridge = "0.0.3"
-serde-env = "0.1.0"
-anyhow = "1.0.56"
-indexmap = "1.8.1"
-toml = "0.5.9"
-log = "0.4.16"
+serde-env = "0.1"
+anyhow = "1"
+indexmap = "1"
+toml = "0.5"
+log = "0.4"
 
 [dev-dependencies]
-serde = { version = "1.0.136", features = ["derive"] }
-temp-env = "0.3.0"
-env_logger = "0.9.0"
+serde = { version = "1", features = ["derive"] }
+temp-env = "0.3"
+env_logger = "0.9"
