@@ -1,6 +1,6 @@
 # serfig &emsp; [![Build Status]][actions] [![Latest Version]][crates.io]
 
-[Build Status]: https://img.shields.io/github/workflow/status/Xuanwo/serfig/CI/main
+[Build Status]: https://img.shields.io/github/actions/workflow/status/Xuanwo/serfig/ci.yml?branch=main
 [actions]: https://github.com/Xuanwo/serfig/actions?query=branch%3Amain
 [Latest Version]: https://img.shields.io/crates/v/serfig.svg
 [crates.io]: https://crates.io/crates/serfig
