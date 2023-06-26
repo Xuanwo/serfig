@@ -14,7 +14,7 @@ serde = "1"
 serde-bridge = "0.0.3"
 serde-env = "0.1"
 anyhow = "1"
-indexmap = "1"
+indexmap = "2"
 toml = "0.7"
 log = "0.4"
 
