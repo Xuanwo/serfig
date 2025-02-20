@@ -44,7 +44,7 @@ where
     ///
     /// fn main() -> anyhow::Result<()> {
     ///     let builder = Builder::default()
-    ///         .unknown_field_handler(|path| {
+    ///         .with_unknown_field_handler(|path| {
     ///             warn!("unknown field: {}", path);
     ///         })
     ///         .collect(from_file(Toml, "config.toml"));
@@ -53,7 +53,7 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn unknown_field_handler(mut self, handler: UnknownFieldHandler) -> Self {
+    pub fn with_unknown_field_handler(mut self, handler: UnknownFieldHandler) -> Self {
         self.unknown_field_handler = Some(handler);
         self
     }
