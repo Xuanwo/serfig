@@ -42,7 +42,7 @@ where
     V: DeserializeOwned + Serialize + Debug,
 {
     Environment {
-        phantom: PhantomData::default(),
+        phantom: PhantomData,
     }
 }
 
