@@ -106,7 +106,7 @@ where
 
             debug!("got value: {:?}", value);
             // Re-deserialize the value if we from_value correctly.
-            result = match from_value(value.clone()) {
+            result = match deserialize_value(value.clone(), true) {
                 Ok(v) => Some(v),
                 Err(e) => {
                     warn!("deserialize value {:?}: {:?}", value, e);
@@ -119,8 +119,14 @@ where
     }
 }
 
-fn from_value<V: DeserializeOwned>(v: Value) -> Result<V> {
-    V::from_value(v).map_err(|e| anyhow!("deserialize value: {:?}", e))
+fn deserialize_value<V: DeserializeOwned>(v: Value, skip_unknown: bool) -> Result<V> {
+    match skip_unknown {
+        true => serde_ignored::deserialize(serde_bridge::Deserializer::from(v), |path| {
+            warn!("unknown field: {}", path.to_string());
+        })
+        .map_err(Into::into),
+        false => V::from_value(v).map_err(|e| anyhow!("deserialize value: {:?}", e)),
+    }
 }
 
 impl<V> Builder<V>
