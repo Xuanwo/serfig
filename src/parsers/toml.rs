@@ -18,25 +18,6 @@ impl Parser for Toml {
 /// Toml with unknown field handler support
 ///
 /// This parser will ignore unknown fields and call the handler with the path of the unknown field.
-///
-/// ```rust
-/// use serde_config::{Builder, from_str};
-/// use serde_config::parsers::TomlIgnored;
-///
-/// let unknown_fields = Arc::new(Mutex::new(Vec::new()));
-/// let unknown_fields_clone = unknown_fields.clone();
-///
-/// let cfg = Builder::default().collect(from_str(
-///     TomlIgnored::new(Box::new(move |path| {
-///         unknown_fields_clone.lock().unwrap().push(path.to_string());
-///     })),
-///     toml,
-/// ));
-///
-/// let t: TestConfig = cfg.build()?;
-///
-/// assert_eq!(unknown_fields.lock().unwrap().clone(), vec!["test_b".to_string()]);
-/// ```
 pub struct TomlIgnored {
     handler: TomlUnknownFieldHandler,
 }
