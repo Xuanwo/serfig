@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use log::{debug, warn};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use serde_bridge::{into_value, FromValue};
+use serde_bridge::{into_value, FromValue, Value};
 
 use crate::collectors::{Collector, IntoCollector};
 use crate::value::{merge, merge_with_default};
@@ -106,7 +106,7 @@ where
 
             debug!("got value: {:?}", value);
             // Re-deserialize the value if we from_value correctly.
-            result = match V::from_value(value.clone()) {
+            result = match from_value(value.clone()) {
                 Ok(v) => Some(v),
                 Err(e) => {
                     warn!("deserialize value {:?}: {:?}", value, e);
@@ -117,6 +117,10 @@ where
 
         result.ok_or_else(|| anyhow!("no valid value to deserialize",))
     }
+}
+
+fn from_value<V: DeserializeOwned>(v: Value) -> Result<V> {
+    V::from_value(v).map_err(|e| anyhow!("deserialize value: {:?}", e))
 }
 
 impl<V> Builder<V>
