@@ -11,7 +11,10 @@ use crate::value::{merge, merge_with_default};
 #[derive(Default)]
 pub struct Builder<V: DeserializeOwned + Serialize> {
     collectors: Vec<Box<dyn Collector<V>>>,
+    unknown_field_handler: Option<UnknownFieldHandler>,
 }
+
+pub type UnknownFieldHandler = Box<dyn Fn(&str) -> ()>;
 
 impl<V> Builder<V>
 where
@@ -21,7 +24,38 @@ where
     pub fn new() -> Builder<V> {
         Self {
             collectors: Vec::new(),
+            unknown_field_handler: None,
         }
+    }
+
+    /// Set unknown field handler.
+    ///
+    /// When an unknown field is found, the handler will be called. We can use
+    /// this to hint the user that there might be a typo in the field name.
+    ///
+    /// Please note that `#[serde(deny_unknown_fields)]` will override this
+    /// behavior.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use serde::{Deserialize, Serialize};
+    /// use serfig::Builder;
+    ///
+    /// fn main() -> anyhow::Result<()> {
+    ///     let builder = Builder::default()
+    ///         .unknown_field_handler(|path| {
+    ///             warn!("unknown field: {}", path);
+    ///         })
+    ///         .collect(from_file(Toml, "config.toml"));
+    ///
+    ///     let t = builder.build()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn unknown_field_handler(mut self, handler: UnknownFieldHandler) -> Self {
+        self.unknown_field_handler = Some(handler);
+        self
     }
 
     /// Add collectors into builder.
@@ -57,6 +91,7 @@ where
         self.collectors.push(c.into_collector());
         Self {
             collectors: self.collectors,
+            unknown_field_handler: self.unknown_field_handler,
         }
     }
 
@@ -106,7 +141,7 @@ where
 
             debug!("got value: {:?}", value);
             // Re-deserialize the value if we from_value correctly.
-            result = match deserialize_value(value.clone(), true) {
+            result = match deserialize_value(value.clone(), &self.unknown_field_handler) {
                 Ok(v) => Some(v),
                 Err(e) => {
                     warn!("deserialize value {:?}: {:?}", value, e);
@@ -119,13 +154,16 @@ where
     }
 }
 
-fn deserialize_value<V: DeserializeOwned>(v: Value, skip_unknown: bool) -> Result<V> {
-    match skip_unknown {
-        true => serde_ignored::deserialize(serde_bridge::Deserializer::from(v), |path| {
-            warn!("unknown field: {}", path.to_string());
+fn deserialize_value<V: DeserializeOwned>(
+    v: Value,
+    unknown_field_handler: &Option<UnknownFieldHandler>,
+) -> Result<V> {
+    match unknown_field_handler {
+        Some(handler) => serde_ignored::deserialize(serde_bridge::Deserializer::from(v), |path| {
+            handler(&path.to_string());
         })
         .map_err(Into::into),
-        false => V::from_value(v).map_err(|e| anyhow!("deserialize value: {:?}", e)),
+        None => V::from_value(v).map_err(|e| anyhow!("deserialize value: {:?}", e)),
     }
 }
 
