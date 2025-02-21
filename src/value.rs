@@ -8,7 +8,7 @@ fn merge_map_with_default<K: Hash + Eq>(
     r: IndexMap<K, Value>,
 ) -> IndexMap<K, Value> {
     for (k, rv) in r {
-        match d.remove(&k) {
+        match d.shift_remove(&k) {
             Some(lv) => {
                 d.insert(k, merge_with_default(lv, rv));
             }
@@ -58,9 +58,9 @@ fn merge_map<K: Hash + Eq>(
     r: IndexMap<K, Value>,
 ) -> IndexMap<K, Value> {
     for (k, rv) in r {
-        let dv = d.remove(&k).expect("default must contain key");
+        let dv = d.shift_remove(&k).expect("default must contain key");
 
-        match l.remove(&k) {
+        match l.shift_remove(&k) {
             Some(lv) => {
                 let v = match (dv == lv, dv == rv) {
                     (true, false) => rv,

@@ -48,7 +48,7 @@ where
     P: Parser,
 {
     Structural {
-        phantom: PhantomData::default(),
+        phantom: PhantomData,
         reader: r,
         parser,
     }
@@ -89,7 +89,7 @@ where
     P: Parser,
 {
     Structural {
-        phantom: PhantomData::default(),
+        phantom: PhantomData,
         reader: LazyFileReader::new(path),
         parser,
     }
@@ -130,7 +130,7 @@ where
     P: Parser,
 {
     Structural {
-        phantom: PhantomData::default(),
+        phantom: PhantomData,
         reader: s.as_bytes(),
         parser,
     }
