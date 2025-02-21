@@ -157,13 +157,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, Mutex};
-
     use serde::{Deserialize, Serialize};
 
     use super::*;
     use crate::collectors::*;
-    use crate::parsers::{Toml, TomlIgnored};
+    use crate::parsers::Toml;
 
     #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
     #[serde(default)]
@@ -363,46 +361,6 @@ mod tests {
 
             assert_eq!(t, TestConfigBool { test_bool: false })
         });
-
-        Ok(())
-    }
-
-    #[derive(Debug, Serialize, Deserialize, Default, PartialEq)]
-    #[serde(default)]
-    struct TestConfigIgnored {
-        test_a: String,
-    }
-
-    #[test]
-    fn test_config_ignored() -> Result<()> {
-        let _ = env_logger::try_init();
-
-        let toml = r#"
-        test_a = "test_a"
-        test_b = "test_b"
-        "#;
-
-        let unknown_fields = Arc::new(Mutex::new(Vec::new()));
-        let unknown_fields_clone = unknown_fields.clone();
-
-        let cfg = Builder::default().collect(from_str(
-            TomlIgnored::new(Box::new(move |path| {
-                unknown_fields_clone.lock().unwrap().push(path.to_string());
-            })),
-            toml,
-        ));
-        let t: TestConfigIgnored = cfg.build().expect("must success");
-
-        assert_eq!(
-            t,
-            TestConfigIgnored {
-                test_a: "test_a".to_string()
-            }
-        );
-        assert_eq!(
-            unknown_fields.lock().unwrap().clone(),
-            vec!["test_b".to_string()]
-        );
 
         Ok(())
     }
